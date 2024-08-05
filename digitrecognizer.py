@@ -1,4 +1,4 @@
-# Importação das bibliotecas necessárias
+# Import necessary packages
 import pandas as pd
 import numpy as np
 import os
@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 %autoindent
 
-# Definição das funções necessárias para a modelagem
+# Defining functions for the model records
 def registro_modelo(model):
     stream = io.StringIO()
     model.summary(print_fn=lambda x: stream.write(x + '\n'))
@@ -36,37 +36,43 @@ def realiza_registro():
 # Definição do diretório de trabalho
 os.chdir('/home/thiago/Documentos/MBA USP/Kaggle/DigitRecognizer/')
 
-# Importação dos datasets
+####
+# IF USING KAGGLE DATASET, use these imports below
+####
 teste = pd.read_csv('test.csv')
 treino = pd.read_csv('train.csv')
 
 target = 'label'
 
-# Separação x e y com normalização do x
+# Splitting x/y, with normalization of x values
 dados_treino = treino.drop(target, axis=1)
 dados_teste = treino[target]
 dados_treino = dados_treino/255
 
-# Separação dos dados de treino entre treino e validação
+# Train/test splitting
 tamanho_treino = 0.80
 treino_x, teste_x, treino_y, teste_y = train_test_split(dados_treino, dados_teste,
                                                         train_size=tamanho_treino,
                                                         random_state=1)
 
-# Importação dos datasets direto do Keras (não precisa processar as importações
-# e transformações acima
-(treino_x, treino_y), (teste_x, teste_y) = tf.keras.datasets.mnist.load_data()
-teste = pd.read_csv('test.csv')
-teste = np.array(teste)
-teste = teste.reshape(teste.shape[0], 28, 28, 1)
-
-# Elaboração do modelo de referência
+# Pre-processing transformations
 treino_x = np.array(treino_x)
 treino_y = np.array(treino_y)
 teste_x = np.array(teste_x)
 treino_x = treino_x.reshape(treino_x.shape[0], 28, 28, 1)
 teste_x = teste_x.reshape(teste_x.shape[0], 28, 28, 1)
 
+####
+# IF USING KERAS DATABASE, follow from here
+####
+
+# Fetching the database, already splitting train/test
+(treino_x, treino_y), (teste_x, teste_y) = tf.keras.datasets.mnist.load_data()
+teste = pd.read_csv('test.csv')
+teste = np.array(teste)
+teste = teste.reshape(teste.shape[0], 28, 28, 1)
+
+# Developing my model
 nome_modelo = datetime.now().strftime("%Y%m%d-%H%M")
 modelo = tf.keras.models.Sequential()
 modelo.add(tf.keras.layers.Conv2D(32, kernel_size=(3, 3), input_shape=(28, 28, 1), name='camada_conv_1'))
@@ -83,11 +89,11 @@ modelo.compile(optimizer='rmsprop',
                loss='sparse_categorical_crossentropy',
                metrics=['accuracy'])
 
-# Fit do modelo
+# Model fit
 meu_modelo = modelo.fit(treino_x, treino_y, epochs=50,
                         validation_data=(teste_x, teste_y), batch_size=256)
 
-# Gráfico dos loss em função dos epochs
+# Loss x epochs graph
 y_pred = modelo.predict(teste_x)
 resultado = np.argmax(y_pred, axis=1)
 score = round(accuracy_score(teste_y, resultado), 4)
@@ -99,14 +105,14 @@ plt.xlabel(f'Iterações (epochs)\nScore (accuracy): {score}')
 plt.legend(['dados de treino', 'dados de teste'])
 plt.show()
 
-# Salva o modelo realizado, realiza as previsões e apresenta o score obtido
+# Save the model, predict values and show actual scoring
 modelo.save('modelos/'+nome_modelo+'.keras')
 y_pred = modelo.predict(teste_x)
 resultado = np.argmax(y_pred, axis=1)
 score = round(accuracy_score(teste_y, resultado), 4)
 print(f'Avaliação do modelo por Accuracy: {score}')
 
-# Registra as informações do modelo e score em arquivos locais
+# Record the informations regarding the model and score in local files
 registro_geral = pd.read_csv('registros/registros_resultados.csv')
 registro_atual = pd.DataFrame([[pd.to_datetime(nome_modelo), score]])
 registro_atual.columns = ('Dia e Hora', 'Score (accuracy)')
@@ -115,7 +121,7 @@ if registro_geral.iloc[registro_geral.shape[0]-1]['Dia e Hora'] == str(pd.to_dat
 else:
     realiza_registro()
 
-# Estimação dos resultados do desafio e geração do arquivo para submissão
+# Estimates the challenge values, creating the file for submission on Kaggle
 y_final = modelo.predict(teste)
 y_final = np.argmax(y_final, axis=1)
 submissao = pd.read_csv('sample_submission.csv')
